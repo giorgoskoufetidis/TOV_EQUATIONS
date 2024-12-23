@@ -1,5 +1,6 @@
 import numpy as np 
 
+
 class CRUST:
     def __init__(self,P):
         self.P = P
