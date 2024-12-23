@@ -5,7 +5,6 @@ class EOS:
     """
     In this class we define all the equation of state,
     E = E(P)
-    that we use in our study and they are in form of
     """
     def __init__(self,P):
         self.P = P
