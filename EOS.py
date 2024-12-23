@@ -1,5 +1,6 @@
 import numpy as np 
 
+
 class EOS:
     """
     In this class we define all the equation of state,
