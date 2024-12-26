@@ -25,7 +25,7 @@ The **Equation of State (EOS)** defines the relationship between pressure and en
 
 The following are the **Crust equations** based on the provided code, with the corresponding pressure ranges for each equation:
 
-1. **Crust Equation 1** ( Valid for \($ 9.34375 \times 10^{-5}  \leq P \leq 0.184 $\)):
+1. **Crust Equation 1** (Valid for \( 9.34375 \times 10^{-5} \leq P \leq 0.184 \)):
 
 $$
 P = 103.17338 \left( 1 - e^{-\frac{P}{0.38527}} \right) + 7.34979 \left( 1 - e^{-\frac{P}{0.01211}} \right) + 0.00873
