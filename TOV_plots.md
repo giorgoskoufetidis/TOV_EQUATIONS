@@ -25,25 +25,25 @@ The **Equation of State (EOS)** defines the relationship between pressure and en
 
 The following are the **Crust equations** based on the provided code, with the corresponding pressure ranges for each equation:
 
-1. **Crust Equation 1** (Valid for \( 9.34375 \times 10^{-5} \leq P \leq 0.184 \)):
+1. **Crust Equation 1** (Valid for \( 9.34375 × 10⁻⁵ ≤ P ≤ 0.184 \)):
 
 $$
 P = 103.17338 \left( 1 - e^{-\frac{P}{0.38527}} \right) + 7.34979 \left( 1 - e^{-\frac{P}{0.01211}} \right) + 0.00873
 $$
 
-2. **Crust Equation 2** (Valid for \($ 4.1725 \times 10^{-8} \leq P < 9.34375 \times 10^{-5} \ $)):
+2. **Crust Equation 2** (Valid for \( 4.1725 × 10⁻⁸ ≤ P < 9.34375 × 10⁻⁵ \)):
 
 $$
 P = 0.00015 + 0.00203 \left( 1 - e^{-\frac{P}{344827.5}} \right) + 0.10851 \left( 1 - e^{-\frac{P}{7692.3076}} \right)
 $$
 
-3. **Crust Equation 3** (Valid for \($ 1.44875 \times 10^{-11} \leq P < 4.1725 \times 10^{-8} \ $)):
+3. **Crust Equation 3** (Valid for \( 1.44875 × 10⁻¹¹ ≤ P < 4.1725 × 10⁻⁸ \)):
 
 $$
 P = 0.0000051 \left( 1 - e^{-\frac{P}{0.2373 \times 10^{10}}} \right) + 0.00014 \left( 1 - e^{-\frac{P}{0.4020 \times 10^8}} \right)
 $$
 
-4. **Crust Equation 4** (Valid for \($ P < 1.44875 \times 10^{-11} \ $)):
+4. **Crust Equation 4** (Valid for \( P < 1.44875 × 10⁻¹¹ \)):
 
 $$
 P = 10^{31.93753 + 10.82611 \cdot \log_{10}(P) + 1.29312 \cdot \left( \log_{10}(P) \right)^2 + 0.08014 \cdot \left( \log_{10}(P) \right)^3 + 0.00242 \cdot \left( \log_{10}(P) \right)^4 + 0.000028 \cdot \left( \log_{10}(P) \right)^5}
