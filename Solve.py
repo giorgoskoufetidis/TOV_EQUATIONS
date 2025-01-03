@@ -36,7 +36,7 @@ def process_model(args):
         Pf = np.array([])
         R = np.array([])
 
-        while P0 > 1e-2:
+        while P0 > 1e-12:
             rhs_with_index = partial(tov_rhs, index=model_index)
             res = solve_ivp(rhs_with_index, (rmin, rmax), z0, method='LSODA', atol=1e-12, rtol=1e-8)
             if res.success:
