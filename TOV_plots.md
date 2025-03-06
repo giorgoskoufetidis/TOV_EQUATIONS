@@ -179,14 +179,6 @@ $$
 E(P) = 0.000719964 \cdot P^{1.85898} + 108.975 \cdot P^{0.340074}
 $$
 
-## Plots
-
-### First group of EOS equations
-![First group of EOS equations](/Figure_1.png)
-
-### Second group of EOS equations
-![Second group of EOS equations](/Figure_2.png)
-
 # Quark Star Equation of State (EOS) Generator
 
 
@@ -223,3 +215,15 @@ m = \sqrt{-3\alpha + \sqrt{\frac{4}{3} \pi^2 (B + P) \hbar c^3 + 9\alpha^2}}
 B_{max} = \frac{-\frac{m_s^2 m_n^2}{12 \pi^2} + \frac{\delta^2 m_n^2}{3 \pi^2} + \frac{m_n^4}{108 \pi^2}}{(\hbar c)^3}
 ```
 
+
+
+## Plots
+
+### First group of EOS equations
+![First group of EOS equations](/Figure_1.png)
+
+### Second group of EOS equations
+![Second group of EOS equations](/Figure_2.png)
+
+
+![Quark stars](/Figure_3.png)
