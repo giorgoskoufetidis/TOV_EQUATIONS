@@ -225,5 +225,5 @@ B_{max} = \frac{-\frac{m_s^2 m_n^2}{12 \pi^2} + \frac{\delta^2 m_n^2}{3 \pi^2} +
 ### Second group of EOS equations
 ![Second group of EOS equations](/Figure_2.png)
 
-
+### Quark group of EOS equations
 ![Quark stars](/Figure_3.png)
