@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-file_path = "TOV_results_for_multiple_models (1).txt"
+file_path = "TOV_results_for_multiple_models.txt"
 results = {}
 with open(file_path, "r") as f:
     lines = f.readlines()
@@ -32,6 +32,7 @@ plt.figure(figsize=(10, 6))
 for model_name in group_1:
     df = results[model_name]
     plt.plot(df["Radius"], df["Mass"], label=f"{model_name}: Mass vs Radius")
+    plt.xlim(8,30)
 plt.xlabel("Radius (km)")
 plt.ylabel("Mass (M☉)")
 plt.title("Mass-Radius Relation ")

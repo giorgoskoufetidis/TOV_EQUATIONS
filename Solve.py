@@ -4,6 +4,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from functools import partial
 from multiprocessing import Pool
+import csv
 
 # Define TOV right-hand side equations
 def tov_rhs(r, z, index):
@@ -62,7 +63,8 @@ def process_model(args):
                 break
 
         if len(R) > 0 and len(Mf) > 0:
-            results.append((Mf[-1], R[-1], Pf[-1]))
+            print(f"name:{model_name} m:{Mf[-1]} radius:{R[-1]} P0:{i}")
+            results.append((Mf[-1], R[-1], i))
 
     return model_name, results
 
@@ -84,10 +86,12 @@ if __name__ == "__main__":
 
     with Pool() as pool:
         results = pool.map(process_model, tasks)
-
-    with open("TOV_results_for_multiple_models_parallel.txt", "w") as f:
-        for model_name, model_results in results:
-            f.write(f"# model: {model_name}\n")
-            f.write("Mass Radius Pressure\n")
+    for model_name, model_results in results:
+        with open(f"TOV_results_{model_name}.csv", "w", newline="") as f:
+            write_obj = csv.writer(f)
+            write_obj.writerow(["Mass", "Radius", "Pressure", "Type"])
+            
             for m, r, p in model_results:
-                f.write(f"{m:.8e} {r:.8e} {p:.8e}\n")
+                write_obj.writerow([m, r, p, 0])
+                
+                                              
