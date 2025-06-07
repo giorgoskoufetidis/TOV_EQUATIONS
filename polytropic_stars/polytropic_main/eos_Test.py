@@ -194,25 +194,53 @@ def process_model(args):
             print(f"Warning: Model {model_name} Pc={P_center:.2f} did not converge.")
     return model_name, results
 
+def get_segment_rhos(gamma_1, num_segments):
+    ρ_sat_MeV = conv_to_MeV(r_sat)
+    if gamma_1 <= 2:
+        ρ_high = 15 * ρ_sat_MeV
+    elif 2 < gamma_1 <= 3:
+        ρ_high = 12 * ρ_sat_MeV
+    else:
+        ρ_high = 9 * ρ_sat_MeV
+
+    log_ρ0 = np.log(ρ_sat_MeV)
+    log_ρn = np.log(7.5 * ρ_sat_MeV)
+    segment_rhos = np.exp(np.linspace(log_ρ0, log_ρn, num_segments + 1))
+    segment_rhos[-1] = ρ_high
+    return segment_rhos
+
 if __name__ == "__main__":
-    # Parameters and EOS objects setup
     P_sat = 1.722
-    E_sat = HLPS_2(P_sat)  
+    E_sat = HLPS_2(P_sat)
     segments = 6
-    gamma_options = [1, 3, 5]
-    r_sat_Mev_fm3 =conv_to_MeV(r_sat) 
-    segment_rhos = np.exp(np.linspace(np.log(r_sat_Mev_fm3), np.log(r_sat_Mev_fm3 * segments), segments + 1))
+    gamma_options = [1, 5]
+
     all_gamma_paths = list(product(gamma_options, repeat=segments))
     eos_objects = []
-    for idx, gamma_path in enumerate(all_gamma_paths):  # Just 3 for quick test
+
+    for idx, gamma_path in enumerate(all_gamma_paths):
+        gamma_1 = gamma_path[0]
+        segment_rhos = get_segment_rhos(gamma_1, segments)
         eos = EOSPath(P_sat, E_sat, segment_rhos, gamma_path, name=f"EOS_{idx+1}")
         eos.calculate_parameters()
         eos_objects.append(eos)
-    ic1 = np.arange(1.7, 5, 0.1)
-    ic2 = np.arange(5, 2000, 1)
-    initial_pressures = np.concatenate((ic1, ic2), axis=None)
-    jobs = [(eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures) for eos in eos_objects]
+
+    jobs = []
+    for eos in eos_objects:
+        gamma_1 = eos.gammas[0]
+        P_final = eos.Pi[-1]
+
+        ic1 = np.arange(1.8, 5, 0.1)
+        if P_final < 3000:
+            ic2 = np.arange(5, P_final, 1)
+        else:
+            ic2 = np.arange(5, 3001, 1)
+
+        initial_pressures = np.concatenate((ic1, ic2), axis=None)
+        jobs.append((eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures))
+
     os.makedirs('TOV_results', exist_ok=True)
+
     with ProcessPoolExecutor() as executor:
         futures = [executor.submit(process_model, job) for job in jobs]
         for future in as_completed(futures):
