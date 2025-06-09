@@ -212,7 +212,7 @@ def get_segment_rhos(gamma_1, num_segments):
 if __name__ == "__main__":
     P_sat = 1.722
     E_sat = HLPS_2(P_sat)
-    segments = 6
+    segments = 5
     gamma_options = [1, 5]
 
     all_gamma_paths = list(product(gamma_options, repeat=segments))
@@ -231,10 +231,10 @@ if __name__ == "__main__":
         P_final = eos.Pi[-1]
 
         ic1 = np.arange(1.8, 5, 0.1)
-        if P_final < 3000:
+        if P_final > 400:
             ic2 = np.arange(5, P_final, 1)
         else:
-            ic2 = np.arange(5, 3001, 1)
+            ic2 = np.arange(5, 2001, 1)
 
         initial_pressures = np.concatenate((ic1, ic2), axis=None)
         jobs.append((eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures))
