@@ -197,7 +197,7 @@ def process_model(args):
 def get_segment_rhos(gamma_1, num_segments):
     ρ_sat_MeV = conv_to_MeV(r_sat)
     if gamma_1 <= 2:
-        ρ_high = 15 * ρ_sat_MeV
+        ρ_high = 16 * ρ_sat_MeV
     elif 2 < gamma_1 <= 3:
         ρ_high = 12 * ρ_sat_MeV
     else:
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     P_sat = 1.722
     E_sat = HLPS_2(P_sat)
     segments = 5
-    gamma_options = [1, 5]
+    gamma_options = [1, 2, 3, 4]
 
     all_gamma_paths = list(product(gamma_options, repeat=segments))
     eos_objects = []
@@ -231,21 +231,21 @@ if __name__ == "__main__":
         P_final = eos.Pi[-1]
 
         ic1 = np.arange(1.8, 5, 0.1)
-        if P_final > 400:
-            ic2 = np.arange(5, P_final, 1)
+        if P_final > 700:
+            ic2 = np.arange(5, 4000, 1)
         else:
-            ic2 = np.arange(5, 2001, 1)
+            ic2 = np.arange(5, P_final, 1)
 
         initial_pressures = np.concatenate((ic1, ic2), axis=None)
         jobs.append((eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures))
 
-    os.makedirs('TOV_results', exist_ok=True)
+    os.makedirs('TOV_results_1_2_3_4', exist_ok=True)
 
     with ProcessPoolExecutor() as executor:
         futures = [executor.submit(process_model, job) for job in jobs]
         for future in as_completed(futures):
             model_name, model_results = future.result()
-            with open(f"TOV_results/{model_name}_TOV.csv", "w", newline="") as f:
+            with open(f"TOV_results_1_2_3_4/{model_name}_TOV.csv", "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(["Mass", "Radius", "Pressure", "Type"])
                 for m, r, p in model_results:
