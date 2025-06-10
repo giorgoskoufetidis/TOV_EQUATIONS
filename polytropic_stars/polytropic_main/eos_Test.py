@@ -232,7 +232,7 @@ if __name__ == "__main__":
 
         ic1 = np.arange(1.8, 5, 0.1)
         if P_final > 700:
-            ic2 = np.arange(5, 4000, 1)
+            ic2 = np.arange(5, 3500, 1)
         else:
             ic2 = np.arange(5, P_final, 1)
 
