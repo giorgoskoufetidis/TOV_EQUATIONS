@@ -25,7 +25,8 @@ def conv_to_MeV(value):
 # HLPS_2 function
 def HLPS_2(P):
     return 172.858 * (1 - np.exp(-P / 22.8644)) + 2777.75 * (1 - np.exp(-P / 1909.97)) + 161.553
-
+def HLPS_3(P):
+    return 131.811 * (1 - np.exp(-P/4.41577)) + 924.143 * (1 - np.exp(- P/523.736)) + 81.5682
 
 # EOSPath class
 class EOSPath:
@@ -140,23 +141,48 @@ class EOSPath:
             return self.linear_eps + (P - self.linear_start)
 
        
-# TOV equation
 def tov_rhs(r, z, eos_object):
     M, P = z
     if P <= 0:
         return [0, 0]
-    elif  0.184 <= P <= 1.722:
-        epsilon = HLPS_2(P)
+    
+    # Debug info to trace pressure range
+    if np.isnan(P) or np.isnan(r) or np.isnan(M):
+        raise ValueError(f"[tov_rhs] NaN detected! r={r}, M={M}, P={P}")
+    
+    if 0.184 <= P <= 1.722:
+        try:
+            print(f"[DEBUG] Using HLPS_3 with P = {P:.6f}")
+            epsilon = HLPS_3(P)
+        except Exception as e:
+            raise RuntimeError(f"HLPS_3 failed at P = {P}") from e
     elif P > 1.722:
-        # eos = EOS(P)
         epsilon = eos_object.get_energy_from_pressure(P)
     else:
         crust = CRUST(P)
         epsilon = crust.equation()
-    # epsilon = eos_object.get_energy_from_pressure(P)
+
     dM_dr = 11.2e-6 * r ** 2 * epsilon
     dP_dr = -1.474 * (epsilon * M / r ** 2) * (1 + P / epsilon) * (1 + 11.2e-6 * r ** 3 * P / M) * (1 - 2.948 * M / r) ** (-1)
     return [dM_dr, dP_dr]
+
+# TOV equation
+# def tov_rhs(r, z, eos_object):
+#     M, P = z
+#     if P <= 0:
+#         return [0, 0]
+#     elif  0.184 <= P <= 1.722:
+#         epsilon = HLPS_2(P)
+#     elif P > 1.722:
+#         # eos = EOS(P)
+#         epsilon = eos_object.get_energy_from_pressure(P)
+#     else:
+#         crust = CRUST(P)
+#         epsilon = crust.equation()
+#     # epsilon = eos_object.get_energy_from_pressure(P)
+#     dM_dr = 11.2e-6 * r ** 2 * epsilon
+#     dP_dr = -1.474 * (epsilon * M / r ** 2) * (1 + P / epsilon) * (1 + 11.2e-6 * r ** 3 * P / M) * (1 - 2.948 * M / r) ** (-1)
+#     return [dM_dr, dP_dr]
 # Stopping event
 def stop_when_pressure_small(r, y):
     return y[1] - 1e-10
@@ -210,8 +236,8 @@ def get_segment_rhos(gamma_1, num_segments):
     return segment_rhos
 
 if __name__ == "__main__":
-    P_sat = 1.722
-    E_sat = HLPS_2(P_sat)
+    P_sat = 2.816 # in MeV/fm^3
+    E_sat = HLPS_3(P_sat)
     segments = 5
     gamma_options = [1, 2, 3, 4]
 

@@ -23,16 +23,18 @@ class CRUST:
         c5 = 0.000028 * (np.log(self.P) / np.log(10))**5
         return 10**(c0 + c1 + c2 +c3 + c4 + c5)
     def equation(self):
-        if 9.34375 * 1e-5 <= self.P <= 0.184:
+        if 9.34375e-5 <= self.P <= 0.184:
             return self.crust_equation1()
-        
-        if 4.1725 * 1e-8  <= self.P < 9.34375 * 1e-5:
+        elif 4.1725e-8 <= self.P < 9.34375e-5:
             return self.crust_equation2()
-            
-        if 1.44875 * 1e-11 <= self.P < 4.1725 * 1e-8:
+        elif 1.44875e-11 <= self.P < 4.1725e-8:
             return self.crust_equation3()
-            
-        if self.P < 1.44875 * 1e-11:
+        elif self.P < 1.44875e-11:
             return self.crust_equation4()
+        else:
+            # Fallback: extrapolate or use a safe default
+            print(f"Warning: CRUST equation received pressure {self.P} outside known bounds.")
+            return self.crust_equation1()  # or return a small constant like 1e-10
+
 
 
