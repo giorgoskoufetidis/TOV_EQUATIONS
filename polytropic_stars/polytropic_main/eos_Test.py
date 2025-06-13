@@ -141,48 +141,24 @@ class EOSPath:
             return self.linear_eps + (P - self.linear_start)
 
        
+
+# TOV equation
 def tov_rhs(r, z, eos_object):
     M, P = z
     if P <= 0:
         return [0, 0]
-    
-    # Debug info to trace pressure range
-    if np.isnan(P) or np.isnan(r) or np.isnan(M):
-        raise ValueError(f"[tov_rhs] NaN detected! r={r}, M={M}, P={P}")
-    
-    if 0.184 <= P <= 1.722:
-        try:
-            print(f"[DEBUG] Using HLPS_3 with P = {P:.6f}")
-            epsilon = HLPS_3(P)
-        except Exception as e:
-            raise RuntimeError(f"HLPS_3 failed at P = {P}") from e
-    elif P > 1.722:
+    elif  0.184 <= P <= 2.816:
+        epsilon = HLPS_2(P)
+    elif P >2.816:
+        # eos = EOS(P)
         epsilon = eos_object.get_energy_from_pressure(P)
     else:
         crust = CRUST(P)
         epsilon = crust.equation()
-
+    # epsilon = eos_object.get_energy_from_pressure(P)
     dM_dr = 11.2e-6 * r ** 2 * epsilon
     dP_dr = -1.474 * (epsilon * M / r ** 2) * (1 + P / epsilon) * (1 + 11.2e-6 * r ** 3 * P / M) * (1 - 2.948 * M / r) ** (-1)
     return [dM_dr, dP_dr]
-
-# TOV equation
-# def tov_rhs(r, z, eos_object):
-#     M, P = z
-#     if P <= 0:
-#         return [0, 0]
-#     elif  0.184 <= P <= 1.722:
-#         epsilon = HLPS_2(P)
-#     elif P > 1.722:
-#         # eos = EOS(P)
-#         epsilon = eos_object.get_energy_from_pressure(P)
-#     else:
-#         crust = CRUST(P)
-#         epsilon = crust.equation()
-#     # epsilon = eos_object.get_energy_from_pressure(P)
-#     dM_dr = 11.2e-6 * r ** 2 * epsilon
-#     dP_dr = -1.474 * (epsilon * M / r ** 2) * (1 + P / epsilon) * (1 + 11.2e-6 * r ** 3 * P / M) * (1 - 2.948 * M / r) ** (-1)
-#     return [dM_dr, dP_dr]
 # Stopping event
 def stop_when_pressure_small(r, y):
     return y[1] - 1e-10
@@ -198,7 +174,7 @@ def solve_star(P_central, eos_object):
                     method='RK45',
                     atol=1e-10,
                     rtol=1e-8,
-                    events=[stop_when_pressure_small],
+                    events=stop_when_pressure_small,
                     max_step=0.01)
     return sol
 
@@ -265,13 +241,13 @@ if __name__ == "__main__":
         initial_pressures = np.concatenate((ic1, ic2), axis=None)
         jobs.append((eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures))
 
-    os.makedirs('TOV_results_1_2_3_4', exist_ok=True)
+    os.makedirs('TOV_results_1_2_3_4_HLPS_3', exist_ok=True)
 
     with ProcessPoolExecutor() as executor:
         futures = [executor.submit(process_model, job) for job in jobs]
         for future in as_completed(futures):
             model_name, model_results = future.result()
-            with open(f"TOV_results_1_2_3_4/{model_name}_TOV.csv", "w", newline="") as f:
+            with open(f"TOV_results_1_2_3_4_HLPS_3/{model_name}_TOV.csv", "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(["Mass", "Radius", "Pressure", "Type"])
                 for m, r, p in model_results:
