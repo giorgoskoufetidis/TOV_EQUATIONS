@@ -149,7 +149,7 @@ def tov_rhs(r, z, eos_object):
         return [0, 0]
     elif  0.184 <= P <= 2.816:
         epsilon = HLPS_2(P)
-    elif P >2.816:
+    elif P > 2.816:
         # eos = EOS(P)
         epsilon = eos_object.get_energy_from_pressure(P)
     else:
