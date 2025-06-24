@@ -7,10 +7,69 @@ import os
 from itertools import product
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from CRUST import CRUST
+
 # Constants
 r_sat = 2.7e14  # g/cm^3
 c = 2.998e8  # m/s
 MeV_to_J = 1.60218e-13  # 1 MeV in Joules
+
+
+
+import sympy as sp
+from sympy.utilities.lambdify import lambdify
+
+class CRUST_Differential:
+
+    def eoscsym(self):
+        pp = sp.Symbol('pp')
+        eosfunc = 0.00873 + 103.17338 * (1 - sp.exp(-pp / 0.38527)) + 7.34979 * (1 - sp.exp(-pp / 0.01211))
+        eosfunc_diff = eosfunc.diff(pp)
+        return lambdify(pp, eosfunc_diff, 'numpy')
+
+    def eoscsym2(self):
+        pp = sp.Symbol('pp')
+        eosfunc = 0.00015 + 0.00203 * (1 - sp.exp(-pp / 344827.5)) + 0.10851 * (1 - sp.exp(-pp / 7692.3076))
+        eosfunc_diff = eosfunc.diff(pp)
+        return lambdify(pp, eosfunc_diff, 'numpy')
+
+    def eoscsym3(self):
+        pp = sp.Symbol('pp')
+        eosfunc = 0.0000051 * (1 - sp.exp(-pp * 0.2373 * 10**10)) + 0.00014 * (1 - sp.exp(-pp * 0.4021 * 10**8))
+        eosfunc_diff = eosfunc.diff(pp)
+        return lambdify(pp, eosfunc_diff, 'numpy')
+
+    def eoscsym4(self):
+        pp = sp.Symbol('pp')
+        log_pp = sp.log(pp, 10)
+        eosfunc = 10 * (31.93753 + 10.82611 * log_pp + 1.29312 * log_pp**2 +
+                        0.08014 * log_pp**3 + 0.00242 * log_pp**4 + 0.000028 * log_pp**5)
+        eosfunc_diff = eosfunc.diff(pp)
+        return lambdify(pp, eosfunc_diff, 'numpy')
+
+    def crust_equation1(self, P):
+        return self.eoscsym()(P)
+
+    def crust_equation2(self, P):
+        return self.eoscsym2()(P)
+
+    def crust_equation3(self, P):
+        return self.eoscsym3()(P)
+
+    def crust_equation4(self, P):
+        return self.eoscsym4()(P)
+
+    def equation(self, P):
+        if 9.34375e-5 <= P <= 0.184:
+            return self.crust_equation1(P)
+        elif 4.1725e-8 <= P < 9.34375e-5:
+            return self.crust_equation2(P)
+        elif 1.44875e-11 <= P < 4.1725e-8:
+            return self.crust_equation3(P)
+        elif P < 1.44875e-11:
+            return self.crust_equation4(P)
+        else:
+            raise ValueError("Pressure out of bounds")
+
 
 
 # Conversion function
@@ -141,34 +200,58 @@ class EOSPath:
                 return self.Ei[-1]  # or some other reasonable fallback
             return self.linear_eps + (P - self.linear_start)
 
-       
-
+crust = CRUST()  
+crust_diff = CRUST_Differential()
 # TOV equation
 def tov_rhs(r, z, eos_object):
-    M, P = z
+    M, P, y = z
     if P <= 0:
-        return [0, 0]
-    elif  0.184 <= P <= 2.816:
-        epsilon = HLPS_2(P)
-    elif P > 2.816:
-        # eos = EOS(P)
-        epsilon = eos_object.get_energy_from_pressure(P)
+        return [0, 0, 0]
+    elif  0.184 < P:# <= 2.816:
+        epsilon = HLPS_3(P)
+        dP_de = (HLPS_3(P + 1e-8) - HLPS_3(P - 1e-8)) / (2e-8)
+    # elif P > 2.816:
+    #     eps_plus = eos_object.get_energy_from_pressure(P + 1e-8)
+    #     eps_minus = eos_object.get_energy_from_pressure(P - 1e-8)
+
+    #     if eps_plus is None or eps_minus is None:
+    #         # fallback to avoid crash
+    #         return [0, 0, 0]
+
+    #     epsilon = eos_object.get_energy_from_pressure(P)
+    #     dP_de = (eps_plus - eps_minus) / (2e-8)
+
     else:
-        crust = CRUST(P)
-        epsilon = crust.equation()
+        epsilon = crust.equation(P)
+        crust_plus = crust.equation(P + 1e-11)
+        crust_minus = crust.equation(P - 1e-11)
+        dP_de = (crust_plus - crust_minus) / (2e-11)
+
+    F =  (1-1.474 * 11.2 * ( 10 **(-6)) * (r** 2) * (epsilon - P)) * ((1-2.948 * M / r) ** (-1))
+    # Assuming math module is imported and variables M, r, P, e, dd are defined
+    J = 1.474 * 11.2 * (10**(-6)) * (r**2) * (5 * epsilon + 9 * P + (epsilon + P) / (1 / dP_de)) *  ((1-2.948 * M / r) **(-1)) - 6 * \
+    ((1-2.948 * M / r) ** (-1)) - 4 * ((1.474 ** 2) * (M ** 2)/(r ** 2)) *  ((1 + 11.2 *  (10 **(-6)) * (r** 3) * (P / M)) ** 2) * ((1-2.948 * M / r) ** (-2))
     # epsilon = eos_object.get_energy_from_pressure(P)
     dM_dr = 11.2e-6 * r ** 2 * epsilon
     dP_dr = -1.474 * (epsilon * M / r ** 2) * (1 + P / epsilon) * (1 + 11.2e-6 * r ** 3 * P / M) * (1 - 2.948 * M / r) ** (-1)
-    return [dM_dr, dP_dr]
+    dyrdt = (-y * y - y * F - J) / r
+    return [dM_dr, dP_dr, dyrdt]
 # Stopping event
+def compute_k2(beta, yR):
+    k2 = (8 *(beta ** 5)/5) * ((1-2 * beta)** 2) * (2-yR +2 * beta * (yR - 1)) * (2 *
+     beta * (6-3 * yR +3 * beta *  (5 * yR -8))+ 4 * beta ** 3 * (13-11 * yR + beta * (3 *
+     yR - 2) + 2 * beta ** 2 * (1 + yR)) + 3 * ((1 - 2 * beta)** 2) * (2 - yR + 2 * beta * (yR - 1)) * np.log(1 - 2 * beta)) ** (-1)
+    return k2
+
 def stop_when_pressure_small(r, y):
     return y[1] - 1e-10
 stop_when_pressure_small.terminal = True
 stop_when_pressure_small.direction = -1
 # Solve one TOV star
 def solve_star(P_central, eos_object):
-    z0 = [1e-12, P_central]
+    z0 = [1e-12, P_central, 2.0]  # M, P, y
     r_span = (1e-6, 2e6)
+
     sol = solve_ivp(lambda r, z: tov_rhs(r, z, eos_object),
                     r_span,
                     z0,
@@ -177,22 +260,30 @@ def solve_star(P_central, eos_object):
                     rtol=1e-8,
                     events=stop_when_pressure_small,
                     max_step=0.01)
-    return sol
+
+    if sol.status == 1:
+        R_star = sol.t_events[0][0]
+        M_star = sol.y_events[0][0][0]
+        yR = sol.y_events[0][0][2]
+        beta = 1.474 * M_star / R_star
+        k2 = compute_k2(beta, yR)
+        return M_star, R_star, P_central, k2, yR
+    else:
+        return None
 
 def process_model(args):
     model_name, P0, E0, segment_densities, gammas, initial_pressures = args
-    
+
     eos_object = EOSPath(P0, E0, segment_densities, gammas, name=model_name)
     eos_object.calculate_parameters()
-    
+
     results = []
     for P_center in initial_pressures:
         sol = solve_star(P_center, eos_object)
-        if sol.status == 1:
-            R_star = sol.t_events[0][0]
-            M_star = sol.y_events[0][0][0]
-            results.append((M_star, R_star, P_center))
-            print(f"Model:{model_name} | Mass:{M_star:.4f} | Radius:{R_star:.4f} | Pc={P_center:.2f}")
+        if sol is not None:
+            M_star, R_star, P_center, k2, yR = sol
+            results.append((M_star, R_star, P_center, k2, yR))
+            print(f"Model:{model_name} | Mass:{M_star:.4f} | Radius:{R_star:.4f} | Pc={P_center:.2f} | k2={k2:.4f} | yR={yR:.4f}")
         else:
             print(f"Warning: Model {model_name} Pc={P_center:.2f} did not converge.")
     return model_name, results
@@ -227,29 +318,25 @@ if __name__ == "__main__":
         eos = EOSPath(P_sat, E_sat, segment_rhos, gamma_path, name=f"EOS_{idx+1}")
         eos.calculate_parameters()
         eos_objects.append(eos)
-
     jobs = []
     for eos in eos_objects:
         gamma_1 = eos.gammas[0]
         P_final = eos.Pi[-1]
-
         ic1 = np.arange(1.8, 5, 0.1)
-        if P_final > 700:
-            ic2 = np.arange(5, 3500, 1)
+        if P_final > 900:
+            ic2 = np.arange(5, 3501, 1)
         else:
-            ic2 = np.arange(5, P_final, 1)
-
+            ic2 = np.arange(5, P_final, 1)         
         initial_pressures = np.concatenate((ic1, ic2), axis=None)
         jobs.append((eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures))
-
-    os.makedirs('TOV_results_1_2_3_4_HLPS_3', exist_ok=True)
+    os.makedirs('TOV_results_tidal', exist_ok=True)
 
     with ProcessPoolExecutor() as executor:
         futures = [executor.submit(process_model, job) for job in jobs]
         for future in as_completed(futures):
             model_name, model_results = future.result()
-            with open(f"TOV_results_1_2_3_4_HLPS_3/{model_name}_TOV.csv", "w", newline="") as f:
+            with open(f"TOV_results_tidal/{model_name}_TOV.csv", "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["Mass", "Radius", "Pressure", "Type"])
-                for m, r, p in model_results:
-                    writer.writerow([m, r, p, 0])
+                writer.writerow(["Mass", "Radius", "Pressure", "k2", "yR", "Type"])
+                for m, r, p, k2, yR in model_results:
+                    writer.writerow([m, r, p, k2, yR, 0])
