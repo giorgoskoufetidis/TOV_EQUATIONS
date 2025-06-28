@@ -207,20 +207,19 @@ def tov_rhs(r, z, eos_object):
     M, P, y = z
     if P <= 0:
         return [0, 0, 0]
-    elif  0.184 < P:# <= 2.816:
+    elif  0.184 < P <= 2.816:
         epsilon = HLPS_3(P)
         dP_de = (HLPS_3(P + 1e-8) - HLPS_3(P - 1e-8)) / (2e-8)
-    # elif P > 2.816:
-    #     eps_plus = eos_object.get_energy_from_pressure(P + 1e-8)
-    #     eps_minus = eos_object.get_energy_from_pressure(P - 1e-8)
+    elif P > 2.816:
+        eps_plus = eos_object.get_energy_from_pressure(P + 1e-8)
+        eps_minus = eos_object.get_energy_from_pressure(P - 1e-8)
 
-    #     if eps_plus is None or eps_minus is None:
-    #         # fallback to avoid crash
-    #         return [0, 0, 0]
+        if eps_plus is None or eps_minus is None:
+            # fallback to avoid crash
+            return [0, 0, 0]
 
-    #     epsilon = eos_object.get_energy_from_pressure(P)
-    #     dP_de = (eps_plus - eps_minus) / (2e-8)
-
+        epsilon = eos_object.get_energy_from_pressure(P)
+        dP_de = (eps_plus - eps_minus) / (2e-8)
     else:
         epsilon = crust.equation(P)
         crust_plus = crust.equation(P + 1e-12)
