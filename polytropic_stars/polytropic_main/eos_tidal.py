@@ -223,9 +223,12 @@ def tov_rhs(r, z, eos_object):
 
     else:
         epsilon = crust.equation(P)
-        crust_plus = crust.equation(P + 1e-11)
-        crust_minus = crust.equation(P - 1e-11)
-        dP_de = (crust_plus - crust_minus) / (2e-11)
+        crust_plus = crust.equation(P + 1e-12)
+        crust_minus = crust.equation(P - 1e-12)
+        dP_de = (crust_plus - crust_minus) / (2e-12)
+        if epsilon is None or crust_plus is None or crust_minus is None:
+            print(f"[Error] CRUST energy undefined at P={P:.5e}")
+            return [0, 0, 0]
 
     F =  (1-1.474 * 11.2 * ( 10 **(-6)) * (r** 2) * (epsilon - P)) * ((1-2.948 * M / r) ** (-1))
     # Assuming math module is imported and variables M, r, P, e, dd are defined
