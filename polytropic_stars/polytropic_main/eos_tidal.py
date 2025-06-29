@@ -207,10 +207,10 @@ def tov_rhs(r, z, eos_object):
     M, P, y = z
     if P <= 0:
         return [0, 0, 0]
-    elif  0.184 < P <= 1.722:
-        epsilon = HLPS_2(P)
-        dP_de = (HLPS_2(P + 1e-8) - HLPS_2(P - 1e-8)) / (2e-8)
-    elif P > 1.722:
+    elif  0.184 < P <= 2.816:
+        epsilon = HLPS_3(P)
+        dP_de = (HLPS_3(P + 1e-8) - HLPS_3(P - 1e-8)) / (2e-8)
+    elif P > 2.816:
         eps_plus = eos_object.get_energy_from_pressure(P + 1e-8)
         eps_minus = eos_object.get_energy_from_pressure(P - 1e-8)
 
@@ -279,7 +279,7 @@ def process_model(args):
     eos_object = EOSPath(P0, E0, segment_densities, gammas, name=model_name)
     eos_object.calculate_parameters()
 
-    output_path = os.path.join("TOV_results_tidal_HLPS2", f"{model_name}_TOV.csv")
+    output_path = os.path.join("TOV_results_tidal_HLPS3", f"{model_name}_TOV.csv")
     has_data = False  # Track if anything succeeded
 
     # Create and open file before loop
@@ -319,8 +319,8 @@ def get_segment_rhos(gamma_1, num_segments):
     return segment_rhos
 
 if __name__ == "__main__":
-    P_sat = 1.722
-    E_sat = HLPS_2(P_sat)
+    P_sat = 2.816
+    E_sat = HLPS_3(P_sat)
     segments = 5
     gamma_options = [1, 2, 3, 4]
 
@@ -338,7 +338,7 @@ if __name__ == "__main__":
         initial_pressures = np.concatenate((ic1, ic2))
         eos_jobs.append((model_name, P_sat, E_sat, segment_rhos, gamma_path, initial_pressures))
 
-    os.makedirs("TOV_results_tidal_HLPS2", exist_ok=True)
+    os.makedirs("TOV_results_tidal_HLPS3", exist_ok=True)
     with ProcessPoolExecutor() as executor:
         futures = [executor.submit(process_model, job) for job in eos_jobs]
         for future in as_completed(futures):
