@@ -207,10 +207,10 @@ def tov_rhs(r, z, eos_object):
     M, P, y = z
     if P <= 0:
         return [0, 0, 0]
-    elif  0.184 < P <= 2.816:
-        epsilon = HLPS_3(P)
-        dP_de = (HLPS_3(P + 1e-8) - HLPS_3(P - 1e-8)) / (2e-8)
-    elif P > 2.816:
+    elif  0.184 < P <= 1.722:
+        epsilon = HLPS_2(P)
+        dP_de = (HLPS_2(P + 1e-8) - HLPS_2(P - 1e-8)) / (2e-8)
+    elif P > 1.722:
         eps_plus = eos_object.get_energy_from_pressure(P + 1e-8)
         eps_minus = eos_object.get_energy_from_pressure(P - 1e-8)
 
@@ -279,16 +279,29 @@ def process_model(args):
     eos_object = EOSPath(P0, E0, segment_densities, gammas, name=model_name)
     eos_object.calculate_parameters()
 
-    results = []
-    for P_center in initial_pressures:
-        sol = solve_star(P_center, eos_object)
-        if sol is not None:
-            M_star, R_star, P_center, k2, yR = sol
-            results.append((M_star, R_star, P_center, k2, yR))
-            print(f"Model:{model_name} | Mass:{M_star:.4f} | Radius:{R_star:.4f} | Pc={P_center:.2f} | k2={k2:.4f} | yR={yR:.4f}")
-        else:
-            print(f"Warning: Model {model_name} Pc={P_center:.2f} did not converge.")
-    return model_name, results
+    output_path = os.path.join("TOV_results_tidal_HLPS2", f"{model_name}_TOV.csv")
+    has_data = False  # Track if anything succeeded
+
+    # Create and open file before loop
+    with open(output_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Mass", "Radius", "Pressure", "k2", "yR", "Type"])  # header
+
+        for P_center in initial_pressures:
+            sol = solve_star(P_center, eos_object)
+            if sol is not None:
+                M_star, R_star, P_center, k2, yR = sol
+                writer.writerow([M_star, R_star, P_center, k2, yR, 0])
+                has_data = True
+                print(f"Model:{model_name} | Mass:{M_star:.4f} | Radius:{R_star:.4f} | Pc={P_center:.2f} | k2={k2:.4f} | yR={yR:.4f}")
+            else:
+                print(f"Warning: Model {model_name} Pc={P_center:.2f} did not converge.")
+
+    if not has_data:
+        print(f"⚠️ No successful TOV solution for {model_name}. File was created but is empty.")
+
+    return model_name, 1 if has_data else 0
+
 
 def get_segment_rhos(gamma_1, num_segments):
     ρ_sat_MeV = conv_to_MeV(r_sat)
@@ -306,39 +319,28 @@ def get_segment_rhos(gamma_1, num_segments):
     return segment_rhos
 
 if __name__ == "__main__":
-    P_sat = 2.816 # in MeV/fm^3
-    E_sat = HLPS_3(P_sat)
+    P_sat = 1.722
+    E_sat = HLPS_2(P_sat)
     segments = 5
     gamma_options = [1, 2, 3, 4]
 
     all_gamma_paths = list(product(gamma_options, repeat=segments))
-    eos_objects = []
-
+    eos_jobs = []
     for idx, gamma_path in enumerate(all_gamma_paths):
         gamma_1 = gamma_path[0]
         segment_rhos = get_segment_rhos(gamma_1, segments)
-        eos = EOSPath(P_sat, E_sat, segment_rhos, gamma_path, name=f"EOS_{idx+1}")
+        model_name = f"EOS_{idx + 1}"
+        eos = EOSPath(P_sat, E_sat, segment_rhos, gamma_path, name=model_name)
         eos.calculate_parameters()
-        eos_objects.append(eos)
-    jobs = []
-    for eos in eos_objects:
-        gamma_1 = eos.gammas[0]
         P_final = eos.Pi[-1]
         ic1 = np.arange(1.8, 5, 0.1)
-        if P_final > 900:
-            ic2 = np.arange(5, 3501, 1)
-        else:
-            ic2 = np.arange(5, P_final, 1)         
-        initial_pressures = np.concatenate((ic1, ic2), axis=None)
-        jobs.append((eos.name, eos.P0, eos.E0, eos.segment_densities, eos.gammas, initial_pressures))
-    os.makedirs('TOV_results_tidal', exist_ok=True)
+        ic2 = np.arange(5, 3501 if P_final > 800 else P_final, 1)
+        initial_pressures = np.concatenate((ic1, ic2))
+        eos_jobs.append((model_name, P_sat, E_sat, segment_rhos, gamma_path, initial_pressures))
 
+    os.makedirs("TOV_results_tidal_HLPS2", exist_ok=True)
     with ProcessPoolExecutor() as executor:
-        futures = [executor.submit(process_model, job) for job in jobs]
+        futures = [executor.submit(process_model, job) for job in eos_jobs]
         for future in as_completed(futures):
-            model_name, model_results = future.result()
-            with open(f"TOV_results_tidal/{model_name}_TOV.csv", "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["Mass", "Radius", "Pressure", "k2", "yR", "Type"])
-                for m, r, p, k2, yR in model_results:
-                    writer.writerow([m, r, p, k2, yR, 0])
+            model_name, success = future.result()
+            print(f"✅ Finished {model_name}" if success else f"❌ {model_name} had no results")
