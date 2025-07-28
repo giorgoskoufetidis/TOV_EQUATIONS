@@ -63,6 +63,7 @@ def stability_point(ms, mn, delta):
     return (-ms**2 * mn**2 / (12 * np.pi**2) + delta**2 * mn**2 / (3 * np.pi**2) + mn**4 / (108 * np.pi**2)) / conversion_factor
 
 def process_model(args):
+    i = 0 
     model_name, eos_model, initial_pressures, output_folder = args
     results = []
     last_idx = -1
@@ -101,9 +102,9 @@ def process_model(args):
                 break            
         if final_mass is not None and final_radius is not None and final_pressure is not None and yR_ext is not None and k2 is not None:
             results.append((final_mass, final_radius, P0, k2, yR_int, yR_ext))
-
-            print(f"{model_name} -> M: {final_mass}, R: {final_radius}, P: {P0}, k2: {k2}, yR: {yR_ext}")
-
+            if i % 100 == 0:
+                print(f"{model_name} -> M: {final_mass}, R: {final_radius}, P: {P0}, k2: {k2}, yR: {yR_ext}")
+            i += 1
     # Write CSV file immediately after finishing this model
     output_path = os.path.join(output_folder, f"TOV_results_{model_name}.csv")
     with open(output_path, "w", newline="") as f:
@@ -111,17 +112,15 @@ def process_model(args):
         writer.writerow(["Mass", "Radius", "Pressure", "k2", "yR", "yR_ext", "Type"])
         for mass, radius, pressure, k2, yR, yR_ext in results:
             writer.writerow([mass, radius, pressure, k2, yR, yR_ext, 1])
-
-
     return model_name, len(results)  # Return minimal info just for logging
 
 def run_parallel_processing():
-    # delta_values = list(range(50, 301, 4)) 
-    # ms = 95
-    # B_values = list(range(60, 240, 4)) 
-    delta_values = [50]
-    ms = 95 
-    B_values = [60]
+    delta_values = list(range(50, 301, 4)) 
+    ms = 95
+    B_values = list(range(60, 240, 4)) 
+    # delta_values = [50]
+    # ms = 95 
+    # B_values = [60]
     mn = 939  
     eos_models = []
     model_index = 1
