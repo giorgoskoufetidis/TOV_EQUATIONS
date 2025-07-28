@@ -179,6 +179,44 @@ $$
 E(P) = 0.000719964 \cdot P^{1.85898} + 108.975 \cdot P^{0.340074}
 $$
 
+# Quark Star Equation of State (EOS) Generator
+
+
+- Computes the stability function for a given quark system.
+- Determines the stability limit for the bag constant (`B`) based on physical constraints.
+- Implements a model that calculates the energy density as a function of pressure.
+
+## Formulas Used
+
+### Alpha Parameter
+```math
+\alpha = -\frac{m_s^2}{6} + \frac{2\delta^2}{3}
+```
+
+### Energy Density
+```math
+\epsilon = 3P + 4B - \frac{9 \alpha m^2}{\pi^2 \hbar c^3}
+```
+where
+```math
+m = \sqrt{-3\alpha + \sqrt{\frac{4}{3} \pi^2 (B + P) \hbar c^3 + 9\alpha^2}}
+```
+
+### Stability Function
+```math
+\beta = -\frac{m_s^2 m_n^2}{12 \pi^2} + \frac{\delta^2 m_n^2}{3 \pi^2} + \frac{m_n^4}{108 \pi^2}
+```
+```math
+\beta_{stability} = \frac{\beta}{(\hbar c)^3}
+```
+
+### Stability Point (Upper Limit for B)
+```math
+B_{max} = \frac{-\frac{m_s^2 m_n^2}{12 \pi^2} + \frac{\delta^2 m_n^2}{3 \pi^2} + \frac{m_n^4}{108 \pi^2}}{(\hbar c)^3}
+```
+
+
+
 ## Plots
 
 ### First group of EOS equations
@@ -186,3 +224,9 @@ $$
 
 ### Second group of EOS equations
 ![Second group of EOS equations](/Figure_2.png)
+
+### Quark group of EOS equations
+![Quark stars](/Figure_3.png)
+
+### All EOS together
+![EOS of all models](/Figure_4.png)
