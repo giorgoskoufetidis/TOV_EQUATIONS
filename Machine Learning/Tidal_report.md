@@ -10,15 +10,15 @@
 
 ### Samples from Neutron and Quark Stars 
 
-
+#### M-R-K2
 
 ![First group of EOS equations](/Machine%20Learning/M_R_K2.png)
 
-
+#### M-R-yR
 
 ![First group of EOS equations](/Machine%20Learning/M_R_Y.png)
 
-
+#### M-R-yR_ext
 ![First group of EOS equations](/Machine%20Learning/M_R_Yext.png)
 
 
@@ -27,6 +27,7 @@
 Using Mass, Radius and K2 
 
 ![First group of EOS equations](/Machine%20Learning/knn_k2.png)
+
 accuracy score: 99.59%
     
 
@@ -42,13 +43,13 @@ Using Mass, Radius, Pressure, yR
 
 ![First group of EOS equations](/Machine%20Learning/KNN_P.png)
 
-
 accuracy score: 96.75%
           
 Using Mass, Radius, yR for Neutron Star and yR_ext for Quark Star
 
 
 ![First group of EOS equations](/Machine%20Learning/KNN_y_ext.png)
+
 accuracy score: 99.98%
 
 ## Random Forest Results
@@ -56,11 +57,13 @@ accuracy score: 99.98%
 
 Using Mass, Radius, k2
 ![First group of EOS equations](/Machine%20Learning/random_forest_k2.png)
+
 accuracy score: 100%
 
 
 Using Mass, Radius, yR
 ![First group of EOS equations](/Machine%20Learning/random_forest_y.png)
+
 accuracy score: 99.13%
 
 
