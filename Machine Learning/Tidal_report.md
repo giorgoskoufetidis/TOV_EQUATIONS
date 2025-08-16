@@ -34,15 +34,15 @@
 
 ### Samples from Neutron and Quark Stars 
 
-#### M-R-$k_2$
+#### Mass, Radius, $k_2$
 
 ![First group of EOS equations](/Machine%20Learning/M_R_K2.png)
 
-#### M-R-$y_R$
+#### Mass, Radius, $y_R$
 
 ![First group of EOS equations](/Machine%20Learning/M_R_Y.png)
 
-#### M-R-$y_R^{\mathrm{ext}}$
+#### Mass, Radius, $y_R^{\mathrm{ext}}$
 ![First group of EOS equations](/Machine%20Learning/M_R_Yext.png)
 
 
