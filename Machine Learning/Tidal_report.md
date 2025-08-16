@@ -63,12 +63,14 @@ accuracy score: 100%
 
 
 Using Mass, Radius, yR
+
 ![First group of EOS equations](/Machine%20Learning/random_forest_y.png)
 
 accuracy score: 99.13%
 
 
 Using Mass, Radius, Pressure, yR
+
 ![First group of EOS equations](/Machine%20Learning/random_forest__pressurek_y.png)
 accuracy score: 98.86%
 
