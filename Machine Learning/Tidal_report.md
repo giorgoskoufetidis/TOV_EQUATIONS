@@ -56,6 +56,7 @@ accuracy score: 99.98%
 
 
 Using Mass, Radius, k2
+
 ![First group of EOS equations](/Machine%20Learning/random_forest_k2.png)
 
 accuracy score: 100%
