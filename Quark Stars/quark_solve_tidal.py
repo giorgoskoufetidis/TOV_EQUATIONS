@@ -115,16 +115,16 @@ def process_model(args):
     return model_name, len(results)  # Return minimal info just for logging
 
 def run_parallel_processing():
-    delta_values = list(range(50, 301, 4)) 
-    ms = 95
-    B_values = list(range(60, 240, 4)) 
-    # delta_values = [50]
-    # ms = 95 
-    # B_values = [60]
+    # delta_values = list(range(50, 301, 4)) 
+    # ms = 95
+    # B_values = list(range(60, 240, 4)) 
+    delta_values = [50]
+    ms = 95 
+    B_values = [60]
     mn = 939  
     eos_models = []
     model_index = 1
-    output_folder = "TOV_results_Qark_Stars_tidal"
+    output_folder = "TOV_results_Qark_Stars_tidal_test"
     os.makedirs(output_folder, exist_ok=True)
 
     for b in B_values:
