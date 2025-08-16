@@ -41,14 +41,14 @@ accuracy score: 99.23%
 
 Using Mass, Radius, Pressure, yR
 
-![First group of EOS equations](/Machine%20Learning/KNN_P.png)
+![First group of EOS equations](/Machine%20Learning/knn_p.png)
 
 accuracy score: 96.75%
           
 Using Mass, Radius, yR for Neutron Star and yR_ext for Quark Star
 
 
-![First group of EOS equations](/Machine%20Learning/KNN_y_ext.png)
+![First group of EOS equations](/Machine%20Learning/knn_y_ext.png)
 
 accuracy score: 99.98%
 
