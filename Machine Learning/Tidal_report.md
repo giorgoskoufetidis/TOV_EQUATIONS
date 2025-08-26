@@ -10,6 +10,9 @@
 ![First group of EOS equations](/output6.png)
 
 
+### Polytropic EOS $k_2$ Vs Radius (km)
+![First group of EOS equations](/Machine%20Learning/k2_vs_radius.png)
+
 ### Quark EOS $y_R$ Vs Mass (M☉)
 ![First group of EOS equations](/Machine%20Learning/yr_vs_mass.png)
 
