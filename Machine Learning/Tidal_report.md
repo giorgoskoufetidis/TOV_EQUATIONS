@@ -96,6 +96,7 @@ accuracy score: 99.13%
 Using Mass, Radius, Pressure, $y_R$
 
 ![First group of EOS equations](/Machine%20Learning/random_forest__pressurek_y.png)
+
 accuracy score: 98.86%
 
 
