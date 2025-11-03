@@ -7,7 +7,7 @@
 import os, time, joblib, torch, torch.nn as nn
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 import streamlit as st
-
+import itertools
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.metrics import (
@@ -18,7 +18,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.cm as cm
 # -----------------------------
 # Page Config
 # -----------------------------
@@ -78,7 +79,7 @@ def encode_k2_inplace(df: pd.DataFrame):
     # If k2 is object/string -> encode
 
 
-def prepare_features_for_model(df: pd.DataFrame, model_name: str, scaler_path: str):
+def prepare_features_for_model(df: pd.DataFrame):
     """
     - Ensures column order: mass, radius, k2
     - Encodes k2 if needed
@@ -87,15 +88,8 @@ def prepare_features_for_model(df: pd.DataFrame, model_name: str, scaler_path: s
     df = df.copy()
     encode_k2_inplace(df)
     df = df[["mass", "radius", "k2"]]
+    return df.values
 
-    # Which models require scaling?
-    requires_scaling = model_name in ["Neural_Network"] or model_name.endswith(".pth") or model_name.lower().startswith("neural_network")
-
-    if requires_scaling and os.path.exists(scaler_path):
-        scaler = joblib.load(scaler_path)
-        return scaler.transform(df)
-    else:
-        return df.values
 
 def load_or_fit_scaler_if_needed(scaler_path: str, X_sample: np.ndarray | None):
     """
@@ -183,8 +177,8 @@ else:
     st.sidebar.warning("⚠️ No model files found in this folder.")
 
 # Scaler path is tied to the ACTIVE folder
-ACTIVE_SCALER_PATH = os.path.join(ACTIVE_PATH, "scaler.joblib")
-
+ACTIVE_SCALER_PATH_NN = os.path.join(ACTIVE_PATH, "scaler.joblib")
+ACTIVE_SCALER_PATH_ML = os.path.join(ACTIVE_PATH, "scaler_ml.joblib")
 # -----------------------------
 # Load models from ACTIVE_PATH
 # -----------------------------
@@ -204,7 +198,7 @@ for file in model_files_in_folder:
             nn_model = FlexibleModel(**params)
             nn_model.load_state_dict(torch.load(path, map_location="cpu"))
             nn_model.eval()
-            scaler = joblib.load(ACTIVE_SCALER_PATH) if os.path.exists(ACTIVE_SCALER_PATH) else None
+            scaler = joblib.load(ACTIVE_SCALER_PATH_NN) if os.path.exists(ACTIVE_SCALER_PATH_NN) else None
             loaded_models[name] = {"type": "torch", "model": nn_model, "scaler": scaler}
         else:
             # scikit-learn model (.joblib)
@@ -212,7 +206,8 @@ for file in model_files_in_folder:
             if isinstance(obj, dict) and "model_state_dict" in obj:
                 st.sidebar.warning(f"⚠️ {name} looks like a raw torch state dict; skipping.")
                 continue
-            loaded_models[name] = {"type": "sklearn", "model": obj}
+            scaler = joblib.load(ACTIVE_SCALER_PATH_ML) if os.path.exists(ACTIVE_SCALER_PATH_ML) else None
+            loaded_models[name] = {"type": "sklearn", "model": obj, "scaler": scaler}
     except Exception as e:
         st.sidebar.error(f"❌ Could not load {file}: {e}")
 
@@ -245,14 +240,13 @@ with tab_predict:
 
             # Ensure scaler exists/fitted when the chosen model requires scaling
             needs_scaling = (loaded_models[model_choice]["type"] == "torch") or (model_choice in ["Neural_Network"])
-            if needs_scaling:
-                _ = load_or_fit_scaler_if_needed(ACTIVE_SCALER_PATH, X_sample=sample.assign(k2=[0]).values)
-
-            X_prepared = prepare_features_for_model(sample, model_choice, scaler_path=ACTIVE_SCALER_PATH)
-
+            # if needs_scaling:
+                # _ = load_or_fit_scaler_if_needed(ACTIVE_SCALER_PATH, X_sample=sample.assign(k2=[0]).values)
+            X_prepared = prepare_features_for_model(sample)
             info = loaded_models[model_choice]
             if info["type"] == "sklearn":
-                probs = info["model"].predict_proba(X_prepared)[0]
+                X_scaled = info["scaler"].transform(X_prepared)
+                probs = info["model"].predict_proba(X_scaled)[0]
             else:
                 nn_model = info["model"]
                 scaler = info["scaler"]
@@ -293,6 +287,88 @@ with tab_predict:
             st.pyplot(fig, use_container_width=False)
 
 
+    st.markdown("---")
+    st.subheader("📊 Range Prediction Mode")
+    st.markdown("Define parameter ranges to predict for **all combinations** with a fixed step.")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        mass_min = st.number_input("Mass min", value=1.0, key="mass_min")
+        mass_max = st.number_input("Mass max", value=1.5, key="mass_max")
+    with col2:
+        radius_min = st.number_input("Radius min", value=9.0, key="radius_min")
+        radius_max = st.number_input("Radius max", value=12.0, key="radius_max")
+    with col3:
+        k2_min = st.number_input("K2 min", value=0.05, key="k2_min")
+        k2_max = st.number_input("K2 max", value=0.15, key="k2_max")
+
+    step = st.number_input("Step size (for all parameters)", value=0.1, min_value=0.01, format="%.2f")
+    
+    if st.button("🚀 Run Range Prediction"):
+        masses = np.arange(mass_min, mass_max + step / 2, step)
+        radii = np.arange(radius_min, radius_max + step / 2, step)
+        k2s = np.arange(k2_min, k2_max + step / 2, step)
+
+        grid = list(itertools.product(masses, radii, k2s))
+        df_grid = pd.DataFrame(grid, columns=["mass", "radius", "k2"])
+        st.info(f"🧮 Generated {len(df_grid)} combinations.")
+
+        from mpl_toolkits.mplot3d import Axes3D
+        fig = plt.figure(figsize=(4, 3))
+        ax = fig.add_subplot(111, projection="3d")
+        ax.scatter(df_grid["mass"], df_grid["radius"], df_grid["k2"], color="#4fa3f7", s=10, alpha=0.7, edgecolor="k")
+        ax.set_xlabel("Mass")
+        ax.set_ylabel("Radius")
+        ax.set_zlabel("k2")
+        ax.set_title("Generated Parameter Grid", fontsize=9, pad=6)
+        st.pyplot(fig, use_container_width=False)    
+        X_prepared = prepare_features_for_model(df_grid)
+        info = loaded_models[model_choice]
+
+        if info["type"] == "sklearn":
+            X_scaled = info["scaler"].transform(X_prepared)
+            probs = info["model"].predict_proba(X_scaled)
+        else:
+            nn_model = info["model"]
+            scaler = info["scaler"]
+            if scaler is None or not hasattr(scaler, "mean_"):
+                st.error("❌ Scaler missing/unfitted for the neural network.")
+                st.stop()
+            X_scaled = scaler.transform(X_prepared)
+            with torch.no_grad():
+                logits = nn_model(torch.tensor(X_scaled, dtype=torch.float32))
+                p = torch.sigmoid(logits).numpy().flatten()
+                probs = np.column_stack([1 - p, p])
+
+        preds = np.argmax(probs, axis=1)
+        df_grid["Predicted_Type"] = [LABEL_MAP[p] for p in preds]
+        df_grid["Prob_Neutron"] = probs[:, 0]
+        df_grid["Prob_Quark"] = probs[:, 1]
+
+        st.success("✅ Range predictions complete!")
+        st.dataframe(df_grid.head())
+        color_map = {"Neutron Star": "#3b82f6", "Quark Star": "#ef4444"}  # blue / red
+        colors = df_grid["Predicted_Type"].map(color_map)
+
+        st.markdown("### 🌌 3D Visualization of Predicted Classes")
+        color_map = {"Neutron Star": "#3b82f6", "Quark Star": "#ef4444"}
+        colors = df_grid["Predicted_Type"].map(color_map)
+        fig2 = plt.figure(figsize=(4, 3))
+        ax2 = fig2.add_subplot(111, projection="3d")
+        ax2.scatter(df_grid["mass"], df_grid["radius"], df_grid["k2"], c=colors, s=15, edgecolor="k", alpha=0.8)
+        for label, color in color_map.items():
+            ax2.scatter([], [], [], color=color, label=label, s=25)
+        ax2.legend(loc="upper right", fontsize=7)
+        ax2.set_xlabel("Mass")
+        ax2.set_ylabel("Radius")
+        ax2.set_zlabel("k2")
+        ax2.set_title("Predicted Classes (Neutron vs Quark)", fontsize=9, pad=6)
+        st.pyplot(fig2, use_container_width=False)
+        csv = df_grid.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Predictions", csv, "grid_predictions.csv", "text/csv")
+
+
+
 
 
     st.markdown("---")
@@ -313,22 +389,24 @@ with tab_predict:
             else:
                 # Ensure scaler for models that need it
                 needs_scaling = (loaded_models[batch_model]["type"] == "torch") or (batch_model in ["Neural_Network"])
-                if needs_scaling:
-                    _ = load_or_fit_scaler_if_needed(ACTIVE_SCALER_PATH, X_sample=df.assign(k2=[0]*len(df)).values)
+                # if needs_scaling:
+                #     _ = load_or_fit_scaler_if_needed(ACTIVE_SCALER_PATH, X_sample=df.assign(k2=[0]*len(df)).values)
 
-                X_prepared = prepare_features_for_model(df, batch_model, scaler_path=ACTIVE_SCALER_PATH)
+                X_prepared = prepare_features_for_model(df)
                 info = loaded_models[batch_model]
 
                 if info["type"] == "sklearn":
-                    probs = info["model"].predict_proba(X_prepared)
+                    X_scaled = info["scaler"].transform(X_prepared)
+                    probs = info["model"].predict_proba(X_scaled)
                 else:
                     nn_model = info["model"]
                     scaler = info["scaler"]
                     if scaler is None or not hasattr(scaler, "mean_"):
                         st.error("❌ Scaler missing/unfitted for the neural network in this folder.")
                         st.stop()
+                    X_scaled = scaler.transform(X_prepared)
                     with torch.no_grad():
-                        logits = nn_model(torch.tensor(X_prepared, dtype=torch.float32))
+                        logits = nn_model(torch.tensor(X_scaled, dtype=torch.float32))
                         p = torch.sigmoid(logits).numpy().reshape(-1, 1)
                         probs = np.hstack([1 - p, p])
                 preds = np.argmax(probs, axis=1)
