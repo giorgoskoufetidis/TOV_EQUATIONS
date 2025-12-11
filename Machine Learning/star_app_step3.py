@@ -258,6 +258,38 @@ with tab_predict:
                     p = torch.sigmoid(logits).numpy().flatten()
                     probs = np.array([1 - p[0], p[0]])
             pred = int(np.argmax(probs))
+            # ----------------------------------------------------------
+            # Bar chart for single prediction probabilities
+            # ----------------------------------------------------------
+            st.markdown("### 📊 Prediction Probabilities")
+
+            labels = ["Neutron Star", "Quark Star"]
+            values = [probs[0], probs[1]]
+
+            fig_prob, ax_prob = plt.subplots(figsize=(3, 2.5))
+
+            bars = ax_prob.bar(labels, values, color=["#3b82f6", "#ef4444"], width=0.5)
+
+            # Add percentage labels inside bars
+            for bar, val in zip(bars, values):
+                ax_prob.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() / 2,
+                    f"{val*100:.1f}%",
+                    ha="center",
+                    va="center",
+                    color="black",
+                    fontsize=5,
+                    fontweight="bold"
+                )
+
+            ax_prob.set_ylim(0, 1)
+            ax_prob.set_ylabel("Probability")
+            ax_prob.set_title("Single Prediction Probabilities")
+            ax_prob.grid(axis="y", linestyle="--", alpha=0.4)
+
+            st.pyplot(fig_prob, use_container_width=False)
+
             st.success(f"🌠 Predicted: **{LABEL_MAP[pred]}** (using {model_choice_single})")
 
     # -----------------------------
