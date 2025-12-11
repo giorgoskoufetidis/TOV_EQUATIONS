@@ -225,105 +225,91 @@ tab_predict, tab_train = st.tabs(["🔮 Predict", "🧠 Train / Retrain"])
 # 🔮 PREDICT TAB
 # ==========================================================
 with tab_predict:
-    st.subheader("Manual Prediction")
+    st.subheader("Manual Prediction (Single Value)")
+
+    # Model selector for single value
+    model_choice_single = st.selectbox(
+        "Choose Model for Single Prediction",
+        list(loaded_models.keys()) if loaded_models else [],
+        key="model_choice_single"
+    )
+
     c1, c2, c3 = st.columns(3)
     with c1: mass = st.number_input("Mass", value=1.0, format="%.6f")
     with c2: radius = st.number_input("Radius", value=10.0, format="%.6f")
-    with c3: k2_val = st.number_input("K2 (spectral type or code)", value=0.1, format="%.6f")
+    with c3: k2_val = st.number_input("K2", value=0.1, format="%.6f")
 
-    model_choice = st.selectbox("Choose Model", list(loaded_models.keys()))
-    if st.button("Predict"):
-        if not loaded_models:
-            st.error("❌ No models available.")
+    if st.button("Predict Single Value"):
+        if not loaded_models or not model_choice_single:
+            st.error("❌ No model available.")
         else:
             sample = pd.DataFrame({"mass": [mass], "radius": [radius], "k2": [k2_val]})
-
-            # Ensure scaler exists/fitted when the chosen model requires scaling
-            needs_scaling = (loaded_models[model_choice]["type"] == "torch") or (model_choice in ["Neural_Network"])
-            # if needs_scaling:
-                # _ = load_or_fit_scaler_if_needed(ACTIVE_SCALER_PATH, X_sample=sample.assign(k2=[0]).values)
             X_prepared = prepare_features_for_model(sample)
-            info = loaded_models[model_choice]
+            info = loaded_models[model_choice_single]
             if info["type"] == "sklearn":
                 X_scaled = info["scaler"].transform(X_prepared)
                 probs = info["model"].predict_proba(X_scaled)[0]
             else:
                 nn_model = info["model"]
                 scaler = info["scaler"]
-                if scaler is None or not hasattr(scaler, "mean_"):
-                    st.error("❌ Scaler missing/unfitted for the neural network in this folder.")
-                    st.stop()
                 X_scaled = scaler.transform(X_prepared)
                 with torch.no_grad():
                     logits = nn_model(torch.tensor(X_scaled, dtype=torch.float32))
                     p = torch.sigmoid(logits).numpy().flatten()
                     probs = np.array([1 - p[0], p[0]])
-
             pred = int(np.argmax(probs))
-            st.success(f"🌠 Predicted: **{LABEL_MAP[pred]}** (using {model_choice})")
+            st.success(f"🌠 Predicted: **{LABEL_MAP[pred]}** (using {model_choice_single})")
 
-            fig, ax = plt.subplots(figsize=(2, 2))  # small square plot
-            bars = ax.bar(LABEL_MAP.values(), probs, color="#4fa3f7", width=0.5)
-
-            # Add percentage text inside each bar
-            for bar, prob in zip(bars, probs):
-                if prob > 0.:
-                    height = bar.get_height()
-                    ax.text(
-                        bar.get_x() + bar.get_width() / 2,
-                        height / 2,  # halfway up the bar
-                        f"{prob * 100:.1f}%", 
-                        ha="center", va="center",
-                        fontsize=3, color="black"
-                    )
-
-            ax.set_ylim(0, 1.1)
-            ax.set_ylabel("")
-            ax.set_xticklabels(LABEL_MAP.values(), fontsize=8)
-            ax.set_yticks([])
-            ax.set_title("Prediction Probabilities", fontsize=9, pad=4)
-            ax.grid(axis="y", linestyle="--", alpha=0.7)
-
-            st.pyplot(fig, use_container_width=False)
-
-
+    # -----------------------------
+    # Range Prediction Mode
+    # -----------------------------
     st.markdown("---")
-    st.subheader("📊 Range Prediction Mode")
-    st.markdown("Define parameter ranges to predict for **all combinations** with a fixed step.")
+    st.subheader("📊 Range Prediction (Multiple Combinations)")
+
+    model_choice_range = st.selectbox(
+        "Choose Model for Range Prediction",
+        list(loaded_models.keys()) if loaded_models else [],
+        key="model_choice_range"
+    )
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        mass_min = st.number_input("Mass min", value=1.0, key="mass_min")
-        mass_max = st.number_input("Mass max", value=1.5, key="mass_max")
+        mass_min = st.number_input("Mass min", value=1.0)
+        mass_max = st.number_input("Mass max", value=1.5)
+        step_mass = st.number_input("Step for Mass", value=0.1)
     with col2:
-        radius_min = st.number_input("Radius min", value=9.0, key="radius_min")
-        radius_max = st.number_input("Radius max", value=12.0, key="radius_max")
+        radius_min = st.number_input("Radius min", value=9.0)
+        radius_max = st.number_input("Radius max", value=12.0)
+        step_radius = st.number_input("Step for Radius", value=0.1)
     with col3:
-        k2_min = st.number_input("K2 min", value=0.05, key="k2_min")
-        k2_max = st.number_input("K2 max", value=0.15, key="k2_max")
+        k2_min = st.number_input("K2 min", value=0.05)
+        k2_max = st.number_input("K2 max", value=0.15)
+        step_k2 = st.number_input("Step for K2", value=0.05)
 
-    step = st.number_input("Step size (for all parameters)", value=0.1, min_value=0.01, format="%.2f")
-    
     if st.button("🚀 Run Range Prediction"):
-        masses = np.arange(mass_min, mass_max + step / 2, step)
-        radii = np.arange(radius_min, radius_max + step / 2, step)
-        k2s = np.arange(k2_min, k2_max + step / 2, step)
+        masses = np.arange(mass_min, mass_max + step_mass / 2, step_mass)
+        radii = np.arange(radius_min, radius_max + step_radius / 2, step_radius)
+        k2s = np.arange(k2_min, k2_max + step_k2 / 2, step_k2)
 
         grid = list(itertools.product(masses, radii, k2s))
         df_grid = pd.DataFrame(grid, columns=["mass", "radius", "k2"])
         st.info(f"🧮 Generated {len(df_grid)} combinations.")
 
-        from mpl_toolkits.mplot3d import Axes3D
         fig = plt.figure(figsize=(4, 3))
         ax = fig.add_subplot(111, projection="3d")
-        ax.scatter(df_grid["mass"], df_grid["radius"], df_grid["k2"], color="#4fa3f7", s=10, alpha=0.7, edgecolor="k")
+        ax.scatter(df_grid["mass"], df_grid["radius"], df_grid["k2"], color="#4fa3f7", s=10, alpha=0.7, edgecolors="k")
         ax.set_xlabel("Mass")
         ax.set_ylabel("Radius")
         ax.set_zlabel("k2")
-        ax.set_title("Generated Parameter Grid", fontsize=9, pad=6)
-        st.pyplot(fig, use_container_width=False)    
+        ax.set_title("Generated Parameter Grid")
+        st.pyplot(fig, use_container_width=False)
+
+        if not model_choice_range:
+            st.error("❌ Please select a model for range prediction.")
+            st.stop()
+
+        info = loaded_models[model_choice_range]
         X_prepared = prepare_features_for_model(df_grid)
-        info = loaded_models[model_choice]
 
         if info["type"] == "sklearn":
             X_scaled = info["scaler"].transform(X_prepared)
@@ -331,9 +317,6 @@ with tab_predict:
         else:
             nn_model = info["model"]
             scaler = info["scaler"]
-            if scaler is None or not hasattr(scaler, "mean_"):
-                st.error("❌ Scaler missing/unfitted for the neural network.")
-                st.stop()
             X_scaled = scaler.transform(X_prepared)
             with torch.no_grad():
                 logits = nn_model(torch.tensor(X_scaled, dtype=torch.float32))
@@ -347,23 +330,38 @@ with tab_predict:
 
         st.success("✅ Range predictions complete!")
         st.dataframe(df_grid.head())
-        color_map = {"Neutron Star": "#3b82f6", "Quark Star": "#ef4444"}  # blue / red
-        colors = df_grid["Predicted_Type"].map(color_map)
 
-        st.markdown("### 🌌 3D Visualization of Predicted Classes")
+        # 3D Plot of Predicted Classes
+        col_plot3d, col_barchart = st.columns([2, 1])
         color_map = {"Neutron Star": "#3b82f6", "Quark Star": "#ef4444"}
         colors = df_grid["Predicted_Type"].map(color_map)
-        fig2 = plt.figure(figsize=(4, 3))
-        ax2 = fig2.add_subplot(111, projection="3d")
-        ax2.scatter(df_grid["mass"], df_grid["radius"], df_grid["k2"], c=colors, s=15, edgecolor="k", alpha=0.8)
-        for label, color in color_map.items():
-            ax2.scatter([], [], [], color=color, label=label, s=25)
-        ax2.legend(loc="upper right", fontsize=7)
-        ax2.set_xlabel("Mass")
-        ax2.set_ylabel("Radius")
-        ax2.set_zlabel("k2")
-        ax2.set_title("Predicted Classes (Neutron vs Quark)", fontsize=9, pad=6)
-        st.pyplot(fig2, use_container_width=False)
+        with col_plot3d:
+            st.markdown("### 🌌 3D Visualization of Predicted Classes")
+            fig2 = plt.figure(figsize=(4, 3))
+            ax2 = fig2.add_subplot(111, projection="3d")
+            ax2.scatter(df_grid["mass"], df_grid["radius"], df_grid["k2"], c=colors, s=15, alpha=0.8, edgecolors="k")
+            for label, color in color_map.items():
+                ax2.scatter([], [], [], color=color, label=label, s=25)
+            ax2.legend(loc="upper right", fontsize=7)
+            ax2.set_xlabel("Mass")
+            ax2.set_ylabel("Radius")
+            ax2.set_zlabel("k2")
+            ax2.set_title("Predicted Classes (Neutron vs Quark)")
+            st.pyplot(fig2, use_container_width=False)
+
+        with col_barchart:
+            st.markdown("### 📊 Prediction Totals")
+            counts = df_grid["Predicted_Type"].value_counts().reindex(["Neutron Star", "Quark Star"], fill_value=0)
+            fig_bar, ax_bar = plt.subplots(figsize=(4, 3))
+            bars = ax_bar.bar(counts.index, counts.values, color=["#3b82f6", "#ef4444"], width=0.5)
+            for bar in bars:
+                ax_bar.text(bar.get_x() + bar.get_width() / 2, bar.get_height() / 2,
+                            f"{int(bar.get_height())}", ha="center", va="center", color="white", fontsize=8, fontweight="bold")
+            ax_bar.set_ylabel("Count")
+            ax_bar.set_title("Total Predictions")
+            ax_bar.grid(axis="y", linestyle="--", alpha=0.4)
+            st.pyplot(fig_bar, use_container_width=True)
+
         csv = df_grid.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Predictions", csv, "grid_predictions.csv", "text/csv")
 
