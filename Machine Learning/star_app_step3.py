@@ -126,20 +126,44 @@ def load_or_fit_scaler_if_needed(scaler_path: str, X_sample: np.ndarray | None):
 # -----------------------------
 # PyTorch model class
 # -----------------------------
-class FlexibleModel(nn.Module):
-    def __init__(self, in_features, hidden_layers, out_features):
-        super(FlexibleModel, self).__init__()
-        layers = []
-        prev_units = in_features
-        for h in hidden_layers:
-            layers.append(nn.Linear(prev_units, h))
-            layers.append(nn.ReLU())
-            prev_units = h
-        layers.append(nn.Linear(prev_units, out_features))
-        self.network = nn.Sequential(*layers)
-    def forward(self, x):
-        return self.network(x)
+# class FlexibleModel(nn.Module):
+#     def __init__(self, in_features, hidden_layers, out_features):
+#         super(FlexibleModel, self).__init__()
+#         layers = []
+#         prev_units = in_features
+#         for hidden_units in hidden_layers:
+#             layers.append(nn.Linear(prev_units, hidden_units))
+#             layers.append(nn.BatchNorm1d(hidden_units))
+#             layers.append(nn.ReLU())
+#             prev_units = hidden_units
+#         layers.append(nn.Linear(prev_units, out_features))
+#         self.network = nn.Sequential(*layers)
 
+#     def forward(self, x):
+#         return self.network(x)
+class FlexibleModel(nn.Module):
+    def __init__(self, in_features, hidden_layers, out_features, dropout_p=0.3):
+        """
+        in_features: int — input features
+        hidden_layers: list of ints — neurons in each hidden layer
+        out_features: int — number of outputs (classes)
+        dropout_p: float — dropout probability
+        """
+        super().__init__()
+        layers = []
+        prev = in_features
+        for h in hidden_layers:
+            layers.append(nn.Linear(prev, h))
+            layers.append(nn.ReLU())
+            # layers.append(nn.Dropout(p=dropout_p))
+            prev = h
+        self.hidden = nn.Sequential(*layers)
+        self.out = nn.Linear(prev, out_features)
+
+    def forward(self, x):
+        x = self.hidden(x)
+        x = self.out(x)
+        return x
 # -----------------------------
 # Sidebar: Model Source + Banner + Info
 # -----------------------------
@@ -249,10 +273,12 @@ with tab_predict:
             if info["type"] == "sklearn":
                 X_scaled = info["scaler"].transform(X_prepared)
                 probs = info["model"].predict_proba(X_scaled)[0]
+                print(X_scaled)
             else:
                 nn_model = info["model"]
                 scaler = info["scaler"]
                 X_scaled = scaler.transform(X_prepared)
+                print(X_scaled)
                 with torch.no_grad():
                     logits = nn_model(torch.tensor(X_scaled, dtype=torch.float32))
                     p = torch.sigmoid(logits).numpy().flatten()
